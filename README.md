@@ -41,6 +41,32 @@ go get github.com/inovacc/brdoc
 
 **Requirements:** Go 1.20 or higher
 
+### Install the CLI
+
+To install the `brdoc` command-line tool:
+
+```bash
+go install github.com/inovacc/brdoc/cmd/brdoc@latest
+```
+
+After installation, ensure that your `$GOBIN` (or `$GOPATH/bin`) is on your system PATH so you can run `brdoc` from any directory.
+
+Quick usage:
+
+```bash
+# Generate a valid CPF
+brdoc cpf --generate
+
+# Validate a CPF
+brdoc cpf --validate 123.456.789-09
+
+# Generate a valid CNPJ
+brdoc cnpj --generate
+
+# Validate a CNPJ (alphanumeric supported)
+brdoc cnpj --validate 12.ABC.345/01DE-35
+```
+
 ## 🚀 Quick Start
 
 ### CPF Validation
@@ -186,20 +212,20 @@ Returns the Brazilian state/region where the CPF was issued based on the 9th dig
 
 - `cpf`: CPF string
 
-**Returns:** State/region name in Portuguese
+**Returns:** State/region name in English
 
 **Mapping:**
 
 - 0: Rio Grande do Sul
-- 1: Distrito Federal, Goiás, Mato Grosso do Sul, Tocantins
-- 2: Pará, Amazonas, Acre, Amapá, Rondônia, Roraima
-- 3: Ceará, Maranhão, Piauí
-- 4: Pernambuco, Rio Grande do Norte, Paraíba, Alagoas
-- 5: Bahia, Sergipe
+- 1: Federal District, Goiás, Mato Grosso do Sul, and Tocantins
+- 2: Pará, Amazonas, Acre, Amapá, Rondônia, and Roraima
+- 3: Ceará, Maranhão, and Piauí
+- 4: Pernambuco, Rio Grande do Norte, Paraíba, and Alagoas
+- 5: Bahia and Sergipe
 - 6: Minas Gerais
-- 7: Rio de Janeiro, Espírito Santo
+- 7: Rio de Janeiro and Espírito Santo
 - 8: São Paulo
-- 9: Paraná, Santa Catarina
+- 9: Paraná and Santa Catarina
 
 ---
 
@@ -285,11 +311,11 @@ go tool cover -html=coverage.out
 
 ```
 === RUN   TestCPF_Generate
-CPF gerado: 123.456.789-09 | Origem: Paraná e Santa Catarina
+Generated CPF: 123.456.789-09 | Origin: Paraná and Santa Catarina
 --- PASS: TestCPF_Generate (0.00s)
 
 === RUN   TestCNPJ_ValidateExampleFromPDF
-✓ DVs calculados corretamente: 35
+✓ Check digits calculated correctly: 35
 --- PASS: TestCNPJ_ValidateExampleFromPDF (0.00s)
 
 PASS

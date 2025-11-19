@@ -4,9 +4,26 @@ import (
 	"fmt"
 	"math/rand"
 	"regexp"
+	"slices"
 	"strconv"
 	"strings"
 	"time"
+)
+
+const (
+	CpfLength  = 11
+	CnpjLength = 14
+
+	IsDigit0 = "Rio Grande do Sul"
+	IsDigit1 = "Federal District, Goiás, Mato Grosso do Sul, and Tocantins"
+	IsDigit2 = "Pará, Amazonas, Acre, Amapá, Rondônia, and Roraima"
+	IsDigit3 = "Ceará, Maranhão, and Piauí"
+	IsDigit4 = "Pernambuco, Rio Grande do Norte, Paraíba, and Alagoas"
+	IsDigit5 = "Bahia and Sergipe"
+	IsDigit6 = "Minas Gerais"
+	IsDigit7 = "Rio de Janeiro and Espírito Santo"
+	IsDigit8 = "São Paulo"
+	IsDigit9 = "Paraná and Santa Catarina"
 )
 
 var (
@@ -14,7 +31,7 @@ var (
 	rng            *rand.Rand
 )
 
-// Mapa de conversão para CNPJ alfanumérico (ASCII - 48)
+// Conversion map for alphanumeric CNPJ (ASCII - 48)
 var charToValue = map[rune]int{
 	'0': 0, '1': 1, '2': 2, '3': 3, '4': 4, '5': 5, '6': 6, '7': 7, '8': 8, '9': 9,
 	'A': 17, 'B': 18, 'C': 19, 'D': 20, 'E': 21, 'F': 22, 'G': 23, 'H': 24, 'I': 25,
@@ -23,31 +40,25 @@ var charToValue = map[rune]int{
 }
 
 func init() {
-	// Inicializa gerador de números aleatórios
+	// Initialize random number generator
 	rng = rand.New(rand.NewSource(time.Now().UnixNano()))
 
-	// Inicializa CPFs não aceitos (todos dígitos iguais)
+	// Initialize non-accepted CPFs (all digits equal)
 	notAcceptedCPF = make([]string, 0, 10)
-	for i := 0; i < 10; i++ {
+
+	for i := range 10 {
 		value := strings.Repeat(strconv.Itoa(i), 11)
 		notAcceptedCPF = append(notAcceptedCPF, value)
 	}
 }
 
 // ============================================================================
-// CPF - Cadastro de Pessoas Físicas
+// CPF - Individual Taxpayer Registry
 // ============================================================================
 
 // CPF represents a Brazilian individual tax ID validator
 type CPF struct {
 	cpfNumber []int
-}
-
-// CPFResponse contains CPF validation results
-type CPFResponse struct {
-	CPF     string
-	IsValid bool
-	Origin  string
 }
 
 // NewCPF creates a new CPF validator instance
@@ -57,29 +68,35 @@ func NewCPF() *CPF {
 
 // Generate generates a valid random CPF with formatting
 func (c *CPF) Generate() string {
-	number := make([]int, 9)
-	for i := 0; i < 9; i++ {
+	number := []int{0, 0, 0, 0, 0, 0, 0, 0, 0}
+
+	for i := range 9 {
 		number[i] = rng.Intn(10)
 	}
 
 	number = append(number, c.calculateFirstDigit(number))
 	number = append(number, c.calculateSecondDigit(number))
+
 	return c.maskCPF(number)
 }
 
 // Validate validates a CPF number (with or without formatting)
-func (c *CPF) Validate(values string) bool {
-	c.clean(values)
-	return c.isAccepted(values) && c.length(c.cpfNumber) && c.validate(c.cpfNumber)
+func (c *CPF) Validate(value string) bool {
+	c.clean(value)
+
+	return c.isAccepted(value) && c.length(c.cpfNumber) && c.validate(c.cpfNumber)
 }
 
 // Format formats a CPF string to the standard format XXX.XXX.XXX-XX
-func (c *CPF) Format(s string) (string, error) {
-	c.clean(s)
-	if !c.isAccepted(s) {
+func (c *CPF) Format(value string) (string, error) {
+	c.clean(value)
+
+	if !c.isAccepted(value) {
+		return "", fmt.Errorf("CPF is not valid")
 	}
-	if len(c.cpfNumber) != 11 {
-		return "", fmt.Errorf("CPF deve ter 11 dígitos, recebido: %d", len(c.cpfNumber))
+
+	if len(c.cpfNumber) != CpfLength {
+		return "", fmt.Errorf("CPF must have %d digits, got: %d", CpfLength, len(c.cpfNumber))
 	}
 
 	return c.maskCPF(c.cpfNumber), nil
@@ -87,33 +104,34 @@ func (c *CPF) Format(s string) (string, error) {
 
 // CheckOrigin returns the Brazilian state/region where the CPF was issued
 // based on the 9th digit
-func (c *CPF) CheckOrigin(values string) string {
-	c.clean(values)
+func (c *CPF) CheckOrigin(value string) string {
+	c.clean(value)
+
 	if len(c.cpfNumber) < 9 {
 		return ""
 	}
 
 	switch c.cpfNumber[8] {
 	case 0:
-		return "Rio Grande do Sul"
+		return IsDigit0
 	case 1:
-		return "Distrito Federal, Goiás, Mato Grosso do Sul e Tocantins"
+		return IsDigit1
 	case 2:
-		return "Pará, Amazonas, Acre, Amapá, Rondônia e Roraima"
+		return IsDigit2
 	case 3:
-		return "Ceará, Maranhão e Piauí"
+		return IsDigit3
 	case 4:
-		return "Pernambuco, Rio Grande do Norte, Paraíba e Alagoas"
+		return IsDigit4
 	case 5:
-		return "Bahia e Sergipe"
+		return IsDigit5
 	case 6:
-		return "Minas Gerais"
+		return IsDigit6
 	case 7:
-		return "Rio de Janeiro e Espírito Santo"
+		return IsDigit7
 	case 8:
-		return "São Paulo"
+		return IsDigit8
 	case 9:
-		return "Paraná e Santa Catarina"
+		return IsDigit9
 	default:
 		return ""
 	}
@@ -121,20 +139,22 @@ func (c *CPF) CheckOrigin(values string) string {
 
 // Private CPF methods
 
-func (c *CPF) maskCPF(values []int) string {
-	cpf := ""
-	for _, item := range values {
-		cpf += strconv.Itoa(item)
+func (c *CPF) maskCPF(value []int) string {
+	var sb strings.Builder
+
+	for _, item := range value {
+		sb.WriteString(strconv.Itoa(item))
 	}
-	cpf = strings.ReplaceAll(cpf, "-", "")
+
+	cpf := c.digits(sb.String())
+
 	return fmt.Sprintf("%s.%s.%s-%s", cpf[:3], cpf[3:6], cpf[6:9], cpf[9:])
 }
 
-func (c *CPF) clean(values string) {
-	c.cpfNumber = nil
-	values = strings.ReplaceAll(values, ".", "")
-	values = strings.ReplaceAll(values, "-", "")
-	for _, item := range values {
+func (c *CPF) clean(value string) {
+	// Always reset and parse fresh to avoid stale state across calls
+	c.cpfNumber = c.cpfNumber[:0]
+	for _, item := range c.digits(value) {
 		digit, err := strconv.Atoi(string(item))
 		if err == nil {
 			c.cpfNumber = append(c.cpfNumber, digit)
@@ -142,69 +162,65 @@ func (c *CPF) clean(values string) {
 	}
 }
 
-func (c *CPF) calculateFirstDigit(values []int) int {
+func (c *CPF) digits(value string) string {
+	return regexp.MustCompile(`[^0-9]`).ReplaceAllString(value, "")
+}
+
+func (c *CPF) calculateFirstDigit(value []int) int {
 	sum := 0
-	for i := 0; i < 9; i++ {
-		sum += values[i] * (10 - i)
+	for i, v := range value {
+		sum += v * (10 - i)
 	}
+
 	rest := (sum * 10) % 11
 	if rest == 10 || rest == 11 {
 		rest = 0
 	}
+
 	return rest
 }
 
-func (c *CPF) calculateSecondDigit(values []int) int {
+func (c *CPF) calculateSecondDigit(value []int) int {
 	sum := 0
-	for i := 0; i < 10; i++ {
-		sum += values[i] * (11 - i)
+	for i, v := range value {
+		sum += v * (11 - i)
 	}
+
 	rest := (sum * 10) % 11
 	if rest == 10 || rest == 11 {
 		rest = 0
 	}
+
 	return rest
 }
 
-func (c *CPF) validate(values []int) bool {
-	if len(values) != 11 {
+func (c *CPF) validate(value []int) bool {
+	if len(value) != CpfLength {
 		return false
 	}
-	return c.calculateFirstDigit(values) == values[9] &&
-		c.calculateSecondDigit(values) == values[10]
+	// Calculate using base slices: first 9 for DV1, first 10 for DV2
+	dv1 := c.calculateFirstDigit(value[:9])
+	dv2 := c.calculateSecondDigit(append(value[:9], dv1))
+
+	return dv1 == value[9] && dv2 == value[10]
 }
 
-func (c *CPF) isAccepted(values string) bool {
-	re := regexp.MustCompile(`[^0-9]`)
-	cpf := re.ReplaceAllString(values, "")
-
-	for _, notAccepted := range notAcceptedCPF {
-		if cpf == notAccepted {
-			return false
-		}
-	}
-
-	return true
+func (c *CPF) isAccepted(value string) bool {
+	// Reject CPFs with all equal digits
+	return !slices.Contains(notAcceptedCPF, c.digits(value))
 }
 
-func (c *CPF) length(values []int) bool {
-	return len(values) == 11
+func (c *CPF) length(value []int) bool {
+	return len(value) == CpfLength
 }
 
 // ============================================================================
-// CNPJ - Cadastro Nacional de Pessoa Jurídica (Alfanumérico)
-// Baseado na especificação SERPRO
+// CNPJ - National Registry of Legal Entities (Alphanumeric)
+// Based on the SERPRO specification
 // ============================================================================
 
 // CNPJ represents a Brazilian company tax ID validator (alphanumeric format)
 type CNPJ struct{}
-
-// CNPJResponse contains CNPJ validation results
-type CNPJResponse struct {
-	CNPJ      string
-	IsValid   bool
-	Formatted string
-}
 
 // NewCNPJ creates a new CNPJ validator instance
 func NewCNPJ() *CNPJ {
@@ -212,27 +228,27 @@ func NewCNPJ() *CNPJ {
 }
 
 // Generate generates a valid alphanumeric CNPJ
-func (cnpj *CNPJ) Generate() string {
+func (c *CNPJ) Generate() string {
 	var sb strings.Builder
 
-	// Gera os primeiros 12 caracteres aleatórios (números ou letras)
-	for i := 0; i < 12; i++ {
+	// Generate the first 12 random characters (numbers or letters)
+	for range 12 {
 		if rng.Intn(2) == 0 {
-			sb.WriteByte(byte('0' + rng.Intn(10))) // Número
+			sb.WriteByte(byte('0' + rng.Intn(10))) // Number
 		} else {
-			sb.WriteByte(byte('A' + rng.Intn(26))) // Letra
+			sb.WriteByte(byte('A' + rng.Intn(26))) // Letter
 		}
 	}
 
 	cnpjBase := sb.String()
 
-	// Calcula os dois dígitos verificadores
-	dv1, err := cnpj.calculateDV(cnpjBase)
+	// Calculate the two check digits
+	dv1, err := c.calculateDV(cnpjBase)
 	if err != nil {
 		return ""
 	}
 
-	dv2, err := cnpj.calculateDV(cnpjBase + strconv.Itoa(dv1))
+	dv2, err := c.calculateDV(cnpjBase + strconv.Itoa(dv1))
 	if err != nil {
 		return ""
 	}
@@ -241,28 +257,33 @@ func (cnpj *CNPJ) Generate() string {
 }
 
 // Validate verifies if an alphanumeric CNPJ is valid per SERPRO specification
-func (cnpj *CNPJ) Validate(value string) bool {
-	// Remove formatação
-	cleaned := cnpj.clean(value)
+func (c *CNPJ) Validate(value string) bool {
+	// Remove formatting
+	cleaned := c.digits(value)
 
-	if len(cleaned) != 14 {
+	if len(cleaned) != CnpjLength {
 		return false
 	}
 
-	// Valida que os últimos 2 caracteres são numéricos
+	// Ensure the last 2 characters are numeric
 	dv1, err1 := strconv.Atoi(string(cleaned[12]))
+	if err1 != nil {
+		return false
+	}
+
 	dv2, err2 := strconv.Atoi(string(cleaned[13]))
-	if err1 != nil || err2 != nil {
+	if err2 != nil {
 		return false
 	}
 
 	base := cleaned[:12]
-	dv1Calc, err := cnpj.calculateDV(base)
+
+	dv1Calc, err := c.calculateDV(base)
 	if err != nil {
 		return false
 	}
 
-	dv2Calc, err := cnpj.calculateDV(base + strconv.Itoa(dv1Calc))
+	dv2Calc, err := c.calculateDV(base + strconv.Itoa(dv1Calc))
 	if err != nil {
 		return false
 	}
@@ -271,11 +292,11 @@ func (cnpj *CNPJ) Validate(value string) bool {
 }
 
 // Format formats a CNPJ to the standard format XX.XXX.XXX/XXXX-XX
-func (cnpj *CNPJ) Format(value string) (string, error) {
-	cleaned := cnpj.clean(value)
+func (c *CNPJ) Format(value string) (string, error) {
+	cleaned := c.digits(value)
 
-	if len(cleaned) != 14 {
-		return "", fmt.Errorf("CNPJ deve ter 14 caracteres, recebido: %d", len(cleaned))
+	if len(cleaned) != CnpjLength {
+		return "", fmt.Errorf("CNPJ must have 14 characters, got: %d", len(cleaned))
 	}
 
 	return fmt.Sprintf("%s.%s.%s/%s-%s",
@@ -291,36 +312,37 @@ func (cnpj *CNPJ) Format(value string) (string, error) {
 
 // calculateDV calculates a check digit using modulo 11
 // Official SERPRO algorithm for alphanumeric CNPJ
-func (cnpj *CNPJ) calculateDV(value string) (int, error) {
-	pesos := []int{2, 3, 4, 5, 6, 7, 8, 9}
-	soma := 0
+func (c *CNPJ) calculateDV(value string) (int, error) {
+	weights := []int{2, 3, 4, 5, 6, 7, 8, 9}
+	sum := 0
 	j := 0
 
-	// Percorre o CNPJ da direita para a esquerda aplicando os pesos
+	// Iterate the CNPJ from right to left applying the weights
 	for i := len(value) - 1; i >= 0; i-- {
 		val, ok := charToValue[rune(value[i])]
 		if !ok {
-			return 0, fmt.Errorf("caractere inválido: %c na posição %d", value[i], i)
+			return 0, fmt.Errorf("invalid character: %c at position %d", value[i], i)
 		}
-		soma += val * pesos[j]
-		j = (j + 1) % len(pesos) // Reinicia pesos após o 8º elemento
+
+		sum += val * weights[j]
+		j = (j + 1) % len(weights) // Restart weights after the 8th element
 	}
 
-	resto := soma % 11
+	remainder := sum % 11
 
-	// Regra específica: se resto = 0 ou 1, DV = 0
-	if resto == 0 || resto == 1 {
+	// Specific rule: if remainder = 0 or 1, DV = 0
+	if remainder == 0 || remainder == 1 {
 		return 0, nil
 	}
 
-	return 11 - resto, nil
+	return 11 - remainder, nil
 }
 
 // clean removes formatting from an alphanumeric CNPJ
-func (cnpj *CNPJ) clean(value string) string {
-	re := regexp.MustCompile(`[^0-9A-Z]`)
-
-	return strings.ToUpper(re.ReplaceAllString(value, ""))
+func (c *CNPJ) digits(value string) string {
+	// Keep only digits and uppercase letters (A-Z); strip formatting like .-/ and spaces
+	s := strings.ToUpper(value)
+	return regexp.MustCompile(`[^0-9A-Z]`).ReplaceAllString(s, "")
 }
 
 // ============================================================================
@@ -335,10 +357,10 @@ func ValidateDocument(doc string) (docType string, isValid bool) {
 	cleaned = strings.ToUpper(cleaned)
 
 	// Identifica pelo tamanho
-	if len(cleaned) == 11 {
+	if len(cleaned) == CpfLength {
 		cpf := NewCPF()
 		return "CPF", cpf.Validate(doc)
-	} else if len(cleaned) == 14 {
+	} else if len(cleaned) == CnpjLength {
 		cnpj := NewCNPJ()
 		return "CNPJ", cnpj.Validate(doc)
 	}

@@ -32,10 +32,11 @@ Enhancement suggestions are tracked as GitHub issues. When creating an enhanceme
    ```
 
 3. Make your changes following our coding standards:
-  - Write clear, commented code
-  - Follow Go best practices and idioms
-  - Add tests for new functionality
-  - Update documentation as needed
+
+- Write clear, commented code
+- Follow Go best practices and idioms
+- Add tests for new functionality
+- Update documentation as needed
 
 4. Ensure all tests pass:
    ```bash
