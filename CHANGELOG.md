@@ -7,6 +7,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+
+- Documentation updates across the project:
+  - README: corrected API signatures, updated Go version requirement (1.24), added CLI bulk operations (`--from`, `--count`) and stdin examples, updated project structure, and roadmap status for CLI.
+  - SETUP: aligned project structure and added CLI quick start with bulk validation examples.
+  - Package docs (`doc.go`): corrected CNPJ `Generate()` example to reflect current signature.
+  - Clarified expected validation output format in CLI docs (`valid\t<FORMATTED_VALUE>` / `invalid\t<ORIGINAL_INPUT>`).
+  - Testing docs (README, SETUP, CONTRIBUTING): documented usage of `testify` (`assert`/`require`) with examples.
+
+### Tests
+
+- Migrated unit tests to use `github.com/stretchr/testify` assertion library (`assert`/`require`) for clearer and more concise assertions.
+
 ### Planned
 
 - Support for legacy numeric-only CNPJ validation

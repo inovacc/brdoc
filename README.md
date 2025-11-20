@@ -39,7 +39,7 @@ registration.
 go get github.com/inovacc/brdoc
 ```
 
-**Requirements:** Go 1.20 or higher
+**Requirements:** Go 1.24 or higher (per `go.mod`)
 
 ### Install the CLI
 
@@ -51,7 +51,7 @@ go install github.com/inovacc/brdoc/cmd/brdoc@latest
 
 After installation, ensure that your `$GOBIN` (or `$GOPATH/bin`) is on your system PATH so you can run `brdoc` from any directory.
 
-Quick usage:
+Quick usage (single):
 
 ```bash
 # Generate a valid CPF
@@ -65,6 +65,18 @@ brdoc cnpj --generate
 
 # Validate a CNPJ (alphanumeric supported)
 brdoc cnpj --validate 12.ABC.345/01DE-35
+
+# Bulk (from file or stdin)
+# File
+brdoc cpf  --validate --from cpfs.txt
+brdoc cnpj --validate --from cnpjs.txt
+# Stdin (PowerShell/CMD)
+type cpfs.txt  | brdoc cpf  --validate --from -
+type cnpjs.txt | brdoc cnpj --validate --from -
+
+# Generate many
+brdoc cpf  --generate --count 10
+brdoc cnpj --generate --count 5
 ```
 
 ## 🚀 Quick Start
@@ -127,7 +139,7 @@ func main() {
   isValid = cnpj.Validate("12.ABC.345/01DE-35")
   fmt.Printf("Valid: %v\n", isValid)
 
-  // Generate
+  // Generate (returns unformatted alphanumeric string)
   generated := cnpj.Generate()
   fmt.Printf("Generated: %s\n", generated)
 
@@ -194,7 +206,7 @@ Validates a CPF number (with or without formatting).
 - Check digits must be correct
 - Cannot be all same digits (000.000.000-00, 111.111.111-11, etc.)
 
-#### `Format(cpf string) string`
+#### `Format(cpf string) (string, error)`
 
 Formats a CPF string to the standard format.
 
@@ -235,14 +247,9 @@ Returns the Brazilian state/region where the CPF was issued based on the 9th dig
 
 Creates a new CNPJ validator instance.
 
-#### `Generate() (string, error)`
+#### `Generate() string`
 
-Generates a valid random alphanumeric CNPJ.
-
-**Returns:**
-
-- Unformatted CNPJ string (14 characters)
-- Error if generation fails
+Generates a valid random alphanumeric CNPJ. Returns the unformatted 14-character string.
 
 #### `Validate(cnpj string) bool`
 
@@ -305,6 +312,22 @@ go test -cover
 # Generate coverage report
 go test -coverprofile=coverage.out
 go tool cover -html=coverage.out
+```
+
+This project uses the `testify` assertion library for clearer tests. Example:
+
+```go
+import (
+  "testing"
+  "github.com/stretchr/testify/assert"
+  "github.com/stretchr/testify/require"
+)
+
+func TestExample(t *testing.T) {
+  result, err := doSomething()
+  require.NoError(t, err)
+  assert.Equal(t, "expected", result)
+}
 ```
 
 ### Test Output Example
@@ -382,12 +405,17 @@ Check digit 2: 11 - 6 = 5
 brdoc/
 ├── validator.go          # Main implementation
 ├── validator_test.go     # Test suite
+├── cmd/
+│   └── brdoc/
+│       └── brdoc.go      # Cobra CLI (generate/validate, bulk support)
+├── doc.go                # Package docs
 ├── go.mod
 ├── go.sum
 ├── README.md
-├── LICENSE
-└── examples/
-    └── main.go          # Usage examples
+├── CHANGELOG.md
+├── CONTRIBUTING.md
+├── SETUP.md
+└── LICENSE
 ```
 
 ## 🤝 Contributing
@@ -434,7 +462,7 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 - [ ] PIS/PASEP validation
 - [ ] Título de Eleitor validation
 - [ ] CEP (postal code) validation and formatting
-- [ ] CLI tool for document validation
+- [x] CLI tool for document validation (single and bulk)
 - [ ] REST API service example
 
 ## 📊 Stats

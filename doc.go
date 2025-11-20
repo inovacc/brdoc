@@ -49,10 +49,10 @@
 // Generate valid documents:
 //
 //	cpf := brdoc.NewCPF()
-//	newCPF := cpf.Generate()  // Returns formatted CPF
+//	newCPF := cpf.Generate()  // Returns unformatted CPF
 //
 //	cnpj := brdoc.NewCNPJ()
-//	newCNPJ, err := cnpj.Generate()  // Returns unformatted alphanumeric CNPJ
+//	newCNPJ := cnpj.Generate()  // Returns unformatted alphanumeric CNPJ
 //
 // # Formatting
 //

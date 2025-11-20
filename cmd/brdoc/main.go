@@ -49,6 +49,8 @@ var rootCmd = &cobra.Command{
 }
 
 func init() {
+	rootCmd.CompletionOptions.DisableDefaultCmd = true
+
 	rootCmd.AddCommand(cpfCmd)
 	rootCmd.AddCommand(cnpjCmd)
 }

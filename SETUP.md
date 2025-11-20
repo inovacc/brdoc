@@ -2,59 +2,42 @@
 
 ## 📦 Package Contents
 
-This ZIP contains the complete **brdoc** library for validating, generating, and formatting Brazilian fiscal documents (CPF and CNPJ).
+This repository contains the complete **brdoc** library for validating, generating, and formatting Brazilian fiscal documents (CPF and CNPJ), plus a CLI.
 
 ### 📂 Project Structure
 
 ```
-brdoc-project/
-├── .github/
-│   └── workflows/
-│       └── ci.yml              # GitHub Actions CI/CD pipeline
-├── examples/
-│   ├── go.mod                  # Examples module configuration
-│   └── main.go                 # Usage examples
-├── .gitignore                  # Git ignore rules
+brdoc/
+├── cmd/
+│   └── brdoc/
+│       └── main.go             # Cobra CLI (generate/validate, bulk support)
+├── brdoc.go                    # Main implementation
+├── brdoc_test.go               # Test suite
+├── doc.go                      # Package documentation
 ├── CHANGELOG.md                # Version history
 ├── CONTRIBUTING.md             # Contribution guidelines
 ├── LICENSE                     # MIT License
 ├── README.md                   # Complete documentation
-├── doc.go                      # Package documentation
-├── go.mod                      # Module configuration
-├── validator.go                # Main implementation
-└── validator_test.go           # Test suite
+├── SETUP.md                    # This setup guide
+├── go.mod                      # Module configuration (Go 1.24)
+└── go.sum
 ```
 
 ## 🔧 Installation Steps
 
-### 1. Upload to GitHub
+### 1. Clone or upload to GitHub
 
 ```bash
 # Extract the ZIP
-unzip brdoc-v0.1.0.zip
-cd brdoc-project
-
-# Initialize git (if not already a git repo)
-git init
-
-# Add all files
-git add .
-
-# Commit
-git commit -m "Initial commit: brdoc v0.1.0"
-
-# Add remote (your repository)
-git remote add origin https://github.com/inovacc/brdoc.git
-
-# Push to GitHub
-git push -u origin main
+git clone https://github.com/inovacc/brdoc.git
+cd brdoc
 ```
 
 ### 2. Verify Installation
 
 ```bash
 # Run tests
-go test -v
+go test -v ./...
 
 # Run benchmarks
 go test -bench=. -benchmem
@@ -63,31 +46,27 @@ go test -bench=. -benchmem
 go test -cover
 ```
 
-### 3. Try the Examples
+### 3. Try the CLI
 
 ```bash
-cd examples
-go run main.go
-```
+# Install the CLI
+go install github.com/inovacc/brdoc/cmd/brdoc@latest
 
-Expected output:
+# Single operations
+brdoc cpf  --generate
+brdoc cnpj --generate
+brdoc cpf  --validate 123.456.789-09
+brdoc cnpj --validate 12.ABC.345/01DE-35
 
-```
-=== 🇧🇷 Brazilian Document Validator Demo ===
+# Bulk validation
+brdoc cpf  --validate --from cpfs.txt
+brdoc cnpj --validate --from cnpjs.txt
+type cpfs.txt  | brdoc cpf  --validate --from -
+type cnpjs.txt | brdoc cnpj --validate --from -
 
-📋 CPF Examples
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-
-1️⃣  Generating random CPF:
-   Generated: XXX.XXX.XXX-XX
-   Origin: São Paulo
-
-2️⃣  Validating CPFs:
-   ✅ 123.456.789-09
-   ❌ 111.111.111-11
-   ❌ 000.000.000-00
-
-...
+# Generate many
+brdoc cpf  --generate --count 10
+brdoc cnpj --generate --count 5
 ```
 
 ## 📚 Usage in Your Project
@@ -125,6 +104,14 @@ func main() {
 
 ```bash
 go test -v ./...
+```
+
+We use the `testify` assertion library (`assert`/`require`) for clearer tests. Typical pattern:
+
+```go
+result, err := DoThing()
+require.NoError(t, err)
+assert.Equal(t, "expected", result)
 ```
 
 ### Check test coverage

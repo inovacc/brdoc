@@ -66,7 +66,7 @@ func NewCPF() *CPF {
 	return &CPF{}
 }
 
-// Generate generates a valid random CPF with formatting
+// Generate generates a valid random CPF with unformatting
 func (c *CPF) Generate() string {
 	number := []int{0, 0, 0, 0, 0, 0, 0, 0, 0}
 
@@ -77,7 +77,13 @@ func (c *CPF) Generate() string {
 	number = append(number, c.calculateFirstDigit(number))
 	number = append(number, c.calculateSecondDigit(number))
 
-	return c.maskCPF(number)
+	var sb strings.Builder
+
+	for _, item := range number {
+		sb.WriteString(strconv.Itoa(item))
+	}
+
+	return c.digits(sb.String())
 }
 
 // Validate validates a CPF number (with or without formatting)

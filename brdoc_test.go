@@ -6,6 +6,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
@@ -19,9 +20,7 @@ func TestCPF_Generate(t *testing.T) {
 	for range 10 {
 		generated := cpf.Generate()
 
-		if !cpf.Validate(generated) {
-			t.Errorf("Generated CPF is invalid: %s", generated)
-		}
+		assert.True(t, cpf.Validate(generated), "Generated CPF is invalid: %s", generated)
 
 		_, _ = fmt.Fprintf(os.Stdout, "Generated CPF: %s | Origin: %s\n", generated, cpf.CheckOrigin(generated))
 	}
@@ -46,9 +45,7 @@ func TestCPF_Validate(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			result := cpf.Validate(tt.cpf)
-			if result != tt.expected {
-				t.Errorf("Validate(%s) = %v, expected %v", tt.cpf, result, tt.expected)
-			}
+			assert.Equal(t, tt.expected, result, "Validate(%s)", tt.cpf)
 		})
 	}
 }
@@ -62,9 +59,7 @@ func TestCPF_Format(t *testing.T) {
 	result, err := cpf.Format(input)
 	require.NoError(t, err)
 
-	if result != expected {
-		t.Errorf("Format(%s) = %s, expected %s", input, result, expected)
-	}
+	assert.Equal(t, expected, result, "Format(%s)", input)
 }
 
 func TestCPF_CheckOrigin(t *testing.T) {
@@ -81,9 +76,7 @@ func TestCPF_CheckOrigin(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.cpf, func(t *testing.T) {
 			result := cpf.CheckOrigin(tt.cpf)
-			if result != tt.expected {
-				t.Errorf("CheckOrigin(%s) = %s, expected %s", tt.cpf, result, tt.expected)
-			}
+			assert.Equal(t, tt.expected, result, "CheckOrigin(%s)", tt.cpf)
 		})
 	}
 }
@@ -104,18 +97,12 @@ func TestCPF_Validate_ProvidedValid(t *testing.T) {
 
 	for _, s := range samples {
 		t.Run(s, func(t *testing.T) {
-			if !cpf.Validate(s) {
-				t.Fatalf("Expected provided CPF to be valid: %s", s)
-			}
+			require.True(t, cpf.Validate(s), "Expected provided CPF to be valid: %s", s)
 
 			formatted, err := cpf.Format(s)
-			if err != nil {
-				t.Fatalf("Unexpected formatting error for %s: %v", s, err)
-			}
+			require.NoError(t, err, "Unexpected formatting error for %s", s)
 
-			if !cpf.Validate(formatted) {
-				t.Fatalf("Formatted CPF should be valid: %s", formatted)
-			}
+			require.True(t, cpf.Validate(formatted), "Formatted CPF should be valid: %s", formatted)
 		})
 	}
 }
@@ -151,18 +138,12 @@ func TestCPF_Format_ProvidedValid_Unformatted(t *testing.T) {
 	for _, formatted := range samples {
 		unformatted := strip(formatted)
 		t.Run(unformatted, func(t *testing.T) {
-			if !cpf.Validate(unformatted) {
-				t.Fatalf("Expected unformatted provided CPF to be valid: %s", unformatted)
-			}
+			require.True(t, cpf.Validate(unformatted), "Expected unformatted provided CPF to be valid: %s", unformatted)
 
 			got, err := cpf.Format(unformatted)
-			if err != nil {
-				t.Fatalf("Unexpected formatting error for %s: %v", unformatted, err)
-			}
+			require.NoError(t, err, "Unexpected formatting error for %s", unformatted)
 
-			if got != formatted {
-				t.Fatalf("Format(%s) = %s, expected %s", unformatted, got, formatted)
-			}
+			assert.Equal(t, formatted, got, "Format(%s)", unformatted)
 		})
 	}
 }
@@ -177,15 +158,11 @@ func TestCNPJ_ValidateExampleFromPDF(t *testing.T) {
 	// Example from SERPRO documentation
 	example := "12ABC34501DE35"
 
-	if !cnpj.Validate(example) {
-		t.Errorf("SERPRO example CNPJ should be valid: %s", example)
-	}
+	assert.True(t, cnpj.Validate(example), "SERPRO example CNPJ should be valid: %s", example)
 
 	// Also test with formatting
 	formattedExample := "12.ABC.345/01DE-35"
-	if !cnpj.Validate(formattedExample) {
-		t.Errorf("Formatted CNPJ should be valid: %s", formattedExample)
-	}
+	assert.True(t, cnpj.Validate(formattedExample), "Formatted CNPJ should be valid: %s", formattedExample)
 }
 
 // Additional real-world valid CNPJ samples (provided) — all must validate
@@ -205,20 +182,14 @@ func TestCNPJ_Validate_ProvidedValid(t *testing.T) {
 
 	for _, s := range samples {
 		t.Run(s, func(t *testing.T) {
-			if !cnpj.Validate(s) {
-				t.Fatalf("Expected provided CNPJ to be valid: %s", s)
-			}
+			require.True(t, cnpj.Validate(s), "Expected provided CNPJ to be valid: %s", s)
 
 			// Round-trip formatting should keep the same visual representation (uppercase)
 			formatted, err := cnpj.Format(s)
-			if err != nil {
-				t.Fatalf("Unexpected formatting error for %s: %v", s, err)
-			}
+			require.NoError(t, err, "Unexpected formatting error for %s", s)
 
 			// Validate formatted too
-			if !cnpj.Validate(formatted) {
-				t.Fatalf("Formatted CNPJ should be valid: %s", formatted)
-			}
+			require.True(t, cnpj.Validate(formatted), "Formatted CNPJ should be valid: %s", formatted)
 		})
 	}
 }
@@ -256,20 +227,14 @@ func TestCNPJ_Format_ProvidedValid_Unformatted(t *testing.T) {
 	for _, formatted := range samples {
 		unformatted := strip(formatted)
 		t.Run(unformatted, func(t *testing.T) {
-			if !cnpj.Validate(unformatted) {
-				t.Fatalf("Expected unformatted provided CNPJ to be valid: %s", unformatted)
-			}
+			require.True(t, cnpj.Validate(unformatted), "Expected unformatted provided CNPJ to be valid: %s", unformatted)
 
 			got, err := cnpj.Format(unformatted)
-			if err != nil {
-				t.Fatalf("Unexpected formatting error for %s: %v", unformatted, err)
-			}
+			require.NoError(t, err, "Unexpected formatting error for %s", unformatted)
 
 			// The formatter normalizes to uppercase and standard mask; compare after normalizing expected to uppercase
 			expected := strings.ToUpper(formatted)
-			if got != expected {
-				t.Fatalf("Format(%s) = %s, expected %s", unformatted, got, expected)
-			}
+			assert.Equal(t, expected, got, "Format(%s)", unformatted)
 		})
 	}
 }
@@ -280,14 +245,10 @@ func TestCNPJ_Generate(t *testing.T) {
 	for range 10 {
 		generated := cnpj.Generate()
 
-		if !cnpj.Validate(generated) {
-			t.Errorf("Generated CNPJ is invalid: %s", generated)
-		}
+		assert.True(t, cnpj.Validate(generated), "Generated CNPJ is invalid: %s", generated)
 
 		formatted, err := cnpj.Format(generated)
-		if err != nil {
-			t.Errorf("Error formatting CNPJ: %v", err)
-		}
+		assert.NoError(t, err)
 
 		_, _ = fmt.Fprintf(os.Stdout, "Generated CNPJ: %s | Formatted: %s\n", generated, formatted)
 	}
@@ -311,9 +272,7 @@ func TestCNPJ_Validate(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			result := cnpj.Validate(tt.cnpj)
-			if result != tt.expected {
-				t.Errorf("Validate(%s) = %v, expected %v", tt.cnpj, result, tt.expected)
-			}
+			assert.Equal(t, tt.expected, result, "Validate(%s)", tt.cnpj)
 		})
 	}
 }
@@ -352,17 +311,10 @@ func TestCNPJ_Format(t *testing.T) {
 			result, err := cnpj.Format(tt.input)
 
 			if tt.hasError {
-				if err == nil {
-					t.Errorf("Expected error for input: %s", tt.input)
-				}
+				assert.Error(t, err, "Expected error for input: %s", tt.input)
 			} else {
-				if err != nil {
-					t.Errorf("Unexpected error: %v", err)
-				}
-
-				if result != tt.expected {
-					t.Errorf("Format(%s) = %s, expected %s", tt.input, result, tt.expected)
-				}
+				require.NoError(t, err)
+				assert.Equal(t, tt.expected, result, "Format(%s)", tt.input)
 			}
 		})
 	}
@@ -375,22 +327,12 @@ func TestCNPJ_CalculateDV_Manual(t *testing.T) {
 	base := "12ABC34501DE"
 
 	dv1, err := cnpj.calculateDV(base)
-	if err != nil {
-		t.Fatalf("Error calculating DV1: %v", err)
-	}
-
-	if dv1 != 3 {
-		t.Errorf("DV1 calculated: %d, expected: 3", dv1)
-	}
+	require.NoError(t, err)
+	assert.Equal(t, 3, dv1, "DV1 calculated")
 
 	dv2, err := cnpj.calculateDV(base + "3")
-	if err != nil {
-		t.Fatalf("Error calculating DV2: %v", err)
-	}
-
-	if dv2 != 5 {
-		t.Errorf("DV2 calculated: %d, expected: 5", dv2)
-	}
+	require.NoError(t, err)
+	assert.Equal(t, 5, dv2, "DV2 calculated")
 
 	_, _ = fmt.Fprintf(os.Stdout, "✓ Check digits calculated correctly: %d%d\n", dv1, dv2)
 }
@@ -417,13 +359,8 @@ func TestValidateDocument(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			docType, isValid := ValidateDocument(tt.doc)
 
-			if docType != tt.docType {
-				t.Errorf("Expected type: %s, got: %s", tt.docType, docType)
-			}
-
-			if isValid != tt.isValid {
-				t.Errorf("Validation expected: %v, got: %v", tt.isValid, isValid)
-			}
+			assert.Equal(t, tt.docType, docType, "doc type for %s", tt.doc)
+			assert.Equal(t, tt.isValid, isValid, "validation for %s", tt.doc)
 		})
 	}
 }

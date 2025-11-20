@@ -80,10 +80,19 @@ Enhancement suggestions are tracked as GitHub issues. When creating an enhanceme
 - Maintain test coverage above 90%
 - Add benchmark tests for performance-critical code
 - Test edge cases and error conditions
+- Use `testify`'s `require`/`assert` for clearer, concise assertions
 
-Example test structure:
+Example test structure (using testify):
 
 ```go
+package yourpkg
+
+import (
+    "testing"
+    "github.com/stretchr/testify/assert"
+    "github.com/stretchr/testify/require"
+)
+
 func TestFeature(t *testing.T) {
     tests := []struct {
         name     string
@@ -98,13 +107,12 @@ func TestFeature(t *testing.T) {
     for _, tt := range tests {
         t.Run(tt.name, func(t *testing.T) {
             result, err := Feature(tt.input)
-            if (err != nil) != tt.wantErr {
-                t.Errorf("Feature() error = %v, wantErr %v", err, tt.wantErr)
+            if tt.wantErr {
+                require.Error(t, err)
                 return
             }
-            if result != tt.expected {
-                t.Errorf("Feature() = %v, want %v", result, tt.expected)
-            }
+            require.NoError(t, err)
+            assert.Equal(t, tt.expected, result)
         })
     }
 }
@@ -123,7 +131,6 @@ func TestFeature(t *testing.T) {
 brdoc/
 ├── validator.go          # Main implementation
 ├── validator_test.go     # Test suite
-├── examples/             # Usage examples
 ├── .github/              # GitHub specific files
 │   └── workflows/        # CI/CD workflows
 ├── go.mod
