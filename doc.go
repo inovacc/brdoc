@@ -18,6 +18,7 @@
 // The CNPJ validator supports alphanumeric format per SERPRO specification:
 //   - Validation of alphanumeric CNPJs (12 alphanumeric + 2 numeric check digits)
 //   - Generation of valid random alphanumeric CNPJs
+//   - Optional generation of legacy numeric-only CNPJs (14 digits)
 //   - Formatting (XX.XXX.XXX/XXXX-XX)
 //   - Modulo 11 check digit calculation
 //
@@ -53,6 +54,9 @@
 //
 //	cnpj := brdoc.NewCNPJ()
 //	newCNPJ := cnpj.Generate()  // Returns unformatted alphanumeric CNPJ
+//
+//	// Legacy numeric-only (14 digits)
+//	legacy := cnpj.GenerateLegacy() // Returns unformatted numeric-only CNPJ
 //
 // # Formatting
 //

@@ -203,6 +203,7 @@ var (
 	cnpjValidate string
 	cnpjFrom     string
 	cnpjCount    int
+	cnpjLegacy   bool
 )
 
 var cnpjCmd = &cobra.Command{
@@ -210,6 +211,7 @@ var cnpjCmd = &cobra.Command{
 	Short: "Generate or validate CNPJ",
 	Example: strings.Join([]string{
 		"brdoc cnpj --generate",
+		"brdoc cnpj --generate --legacy",
 		"brdoc cnpj --generate --count 10",
 		"brdoc cnpj --validate 12.345.678/0001-95",
 		"brdoc cnpj --validate --from cnpjs.txt",
@@ -249,7 +251,13 @@ var cnpjCmd = &cobra.Command{
 			}(w)
 
 			for i := 0; i < cnpjCount; i++ {
-				_, _ = fmt.Fprintln(w, c.Generate())
+				if cnpjLegacy {
+					result, _ := c.Format(c.GenerateLegacy())
+					_, _ = fmt.Fprintln(w, result)
+				} else {
+					result, _ := c.Format(c.Generate())
+					_, _ = fmt.Fprintln(w, result)
+				}
 			}
 
 			return nil
@@ -331,6 +339,7 @@ func init() {
 	cnpjCmd.Flags().StringVarP(&cnpjValidate, "validate", "v", "", "Validate a CNPJ value")
 	cnpjCmd.Flags().StringVarP(&cnpjFrom, "from", "f", "", "Validate many CNPJs from file or '-' for stdin")
 	cnpjCmd.Flags().IntVarP(&cnpjCount, "count", "n", 0, "When generating, how many CNPJs to output")
+	cnpjCmd.Flags().BoolVar(&cnpjLegacy, "legacy", false, "When generating, output legacy numeric-only CNPJ (12 digits base + 2 numeric check digits)")
 }
 
 // openReader returns an io.Reader for the given path. If a path is "-", it returns stdin.
