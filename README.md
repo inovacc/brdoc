@@ -63,6 +63,9 @@ brdoc cpf --validate 123.456.789-09
 # Generate a valid CNPJ
 brdoc cnpj --generate
 
+# Generate a legacy numeric-only CNPJ (14 digits)
+brdoc cnpj --generate --legacy
+
 # Validate a CNPJ (alphanumeric supported)
 brdoc cnpj --validate 12.ABC.345/01DE-35
 
@@ -77,6 +80,8 @@ type cnpjs.txt | brdoc cnpj --validate --from -
 # Generate many
 brdoc cpf  --generate --count 10
 brdoc cnpj --generate --count 5
+# combine with legacy
+brdoc cnpj --generate --legacy --count 5
 ```
 
 ## 🚀 Quick Start
@@ -143,6 +148,10 @@ func main() {
   generated := cnpj.Generate()
   fmt.Printf("Generated: %s\n", generated)
 
+  // Generate legacy numeric-only CNPJ (14 digits, unformatted)
+  legacy := cnpj.GenerateLegacy()
+  fmt.Printf("Legacy: %s\n", legacy)
+
   // Format
   formatted, err := cnpj.Format("12ABC34501DE35")
   if err != nil {
@@ -186,9 +195,9 @@ Creates a new CPF validator instance.
 
 #### `Generate() string`
 
-Generates a valid random CPF with formatting.
+Generates a valid random CPF (unformatted).
 
-**Returns:** Formatted CPF string (XXX.XXX.XXX-XX)
+**Returns:** Unformatted 11-digit CPF string
 
 #### `Validate(cpf string) bool`
 
@@ -250,6 +259,10 @@ Creates a new CNPJ validator instance.
 #### `Generate() string`
 
 Generates a valid random alphanumeric CNPJ. Returns the unformatted 14-character string.
+
+#### `GenerateLegacy() string`
+
+Generates a valid random legacy CNPJ with digits only. Returns the unformatted 14-digit string (12-digit base + 2 numeric check digits).
 
 #### `Validate(cnpj string) bool`
 
@@ -403,11 +416,11 @@ Check digit 2: 11 - 6 = 5
 
 ```
 brdoc/
-├── validator.go          # Main implementation
-├── validator_test.go     # Test suite
+├── brdoc.go              # Main implementation
+├── brdoc_test.go         # Test suite
 ├── cmd/
 │   └── brdoc/
-│       └── brdoc.go      # Cobra CLI (generate/validate, bulk support)
+│       └── main.go       # Cobra CLI (generate/validate, bulk support)
 ├── doc.go                # Package docs
 ├── go.mod
 ├── go.sum
@@ -456,7 +469,7 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 
 ## 🗺️ Roadmap
 
-- [ ] Support for legacy numeric-only CNPJ
+- [x] Support for legacy numeric-only CNPJ
 - [ ] RG (Registro Geral) validation
 - [ ] CNH (Carteira Nacional de Habilitação) validation
 - [ ] PIS/PASEP validation

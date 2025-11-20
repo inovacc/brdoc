@@ -254,6 +254,29 @@ func TestCNPJ_Generate(t *testing.T) {
 	}
 }
 
+func TestCNPJ_GenerateLegacy(t *testing.T) {
+	cnpj := NewCNPJ()
+	for range 10 {
+		generated := cnpj.GenerateLegacy()
+		require.Len(t, generated, CnpjLength)
+
+		// ensure numeric-only
+		for _, r := range generated {
+			require.True(t, r >= '0' && r <= '9', "expected numeric-only, got %q", generated)
+		}
+
+		// legacy must also validate with the alphanumeric validator
+		assert.True(t, cnpj.Validate(generated), "Generated CNPJ is invalid: %s", generated)
+
+		// formatting should work
+		formatted, err := cnpj.Format(generated)
+		require.NoError(t, err)
+		require.Len(t, formatted, 18) // mask length: 18 with separators
+
+		_, _ = fmt.Fprintf(os.Stdout, "Generated CNPJ: %s | Formatted: %s\n", generated, formatted)
+	}
+}
+
 func TestCNPJ_Validate(t *testing.T) {
 	tests := []struct {
 		name     string

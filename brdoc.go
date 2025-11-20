@@ -235,31 +235,14 @@ func NewCNPJ() *CNPJ {
 
 // Generate generates a valid alphanumeric CNPJ
 func (c *CNPJ) Generate() string {
-	var sb strings.Builder
+	return c.generateDigits(false)
+}
 
-	// Generate the first 12 random characters (numbers or letters)
-	for range 12 {
-		if rng.Intn(2) == 0 {
-			sb.WriteByte(byte('0' + rng.Intn(10))) // Number
-		} else {
-			sb.WriteByte(byte('A' + rng.Intn(26))) // Letter
-		}
-	}
-
-	cnpjBase := sb.String()
-
-	// Calculate the two check digits
-	dv1, err := c.calculateDV(cnpjBase)
-	if err != nil {
-		return ""
-	}
-
-	dv2, err := c.calculateDV(cnpjBase + strconv.Itoa(dv1))
-	if err != nil {
-		return ""
-	}
-
-	return fmt.Sprintf("%s%d%d", cnpjBase, dv1, dv2)
+// GenerateLegacy generates a valid numeric-only (legacy) CNPJ
+// It produces a 14-digit unformatted string where the first 12 positions are digits (0-9)
+// and the last two are check digits per modulo 11.
+func (c *CNPJ) GenerateLegacy() string {
+	return c.generateDigits(true)
 }
 
 // Validate verifies if an alphanumeric CNPJ is valid per SERPRO specification
@@ -305,16 +288,48 @@ func (c *CNPJ) Format(value string) (string, error) {
 		return "", fmt.Errorf("CNPJ must have 14 characters, got: %d", len(cleaned))
 	}
 
-	return fmt.Sprintf("%s.%s.%s/%s-%s",
-		cleaned[0:2],
-		cleaned[2:5],
-		cleaned[5:8],
-		cleaned[8:12],
-		cleaned[12:14],
-	), nil
+	return fmt.Sprintf("%s.%s.%s/%s-%s", cleaned[0:2], cleaned[2:5], cleaned[5:8], cleaned[8:12], cleaned[12:14]), nil
 }
 
 // Private CNPJ methods
+
+func (c *CNPJ) generateDigits(legacy bool) string {
+	var sb strings.Builder
+
+	if legacy { // Generate the first 12 random characters (numbers or letters)
+		for range 12 {
+		RetryLoop:
+			if rng.Intn(2) != 0 {
+				goto RetryLoop
+			}
+
+			sb.WriteByte(byte('0' + rng.Intn(10))) // Number
+		}
+	} else {
+		for range 12 {
+			if rng.Intn(2) == 0 {
+				sb.WriteByte(byte('0' + rng.Intn(10))) // Number
+			} else {
+				sb.WriteByte(byte('A' + rng.Intn(26))) // Letter
+			}
+		}
+	}
+
+	cnpjBase := sb.String()
+
+	// Calculate the two check digits
+	dv1, err := c.calculateDV(cnpjBase)
+	if err != nil {
+		return ""
+	}
+
+	dv2, err := c.calculateDV(cnpjBase + strconv.Itoa(dv1))
+	if err != nil {
+		return ""
+	}
+
+	return fmt.Sprintf("%s%d%d", cnpjBase, dv1, dv2)
+}
 
 // calculateDV calculates a check digit using modulo 11
 // Official SERPRO algorithm for alphanumeric CNPJ

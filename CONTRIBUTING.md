@@ -129,10 +129,11 @@ func TestFeature(t *testing.T) {
 
 ```
 brdoc/
-├── validator.go          # Main implementation
-├── validator_test.go     # Test suite
-├── .github/              # GitHub specific files
-│   └── workflows/        # CI/CD workflows
+├── brdoc.go              # Main implementation
+├── brdoc_test.go         # Test suite
+├── cmd/
+│   └── brdoc/
+│       └── main.go       # Cobra CLI (generate/validate, bulk support)
 ├── go.mod
 ├── LICENSE
 └── README.md
