@@ -28,11 +28,14 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"path/filepath"
 	"strings"
 
 	sdk "github.com/inovacc/brdoc"
 	"github.com/spf13/cobra"
 )
+
+const maxLine = 1024 * 1024
 
 func main() {
 	if err := rootCmd.Execute(); err != nil {
@@ -42,28 +45,47 @@ func main() {
 	}
 }
 
+var (
+	buf          = make([]byte, 0, 64*1024)
+	cpfGenerate  bool
+	cpfValidate  string
+	cpfFrom      string
+	cpfCount     int
+	cnpjGenerate bool
+	cnpjValidate string
+	cnpjFrom     string
+	cnpjCount    int
+	cnpjLegacy   bool
+)
+
 var rootCmd = &cobra.Command{
 	Use:   "brdoc",
 	Short: "Brazilian documents utilities (CPF/CNPJ)",
 	Long:  "brdoc is a small CLI to generate and validate Brazilian documents like CPF and CNPJ.",
 }
 
+// Flags for cnpj
 func init() {
+	cnpjCmd.Flags().BoolVarP(&cnpjGenerate, "generate", "g", false, "Generate a valid CNPJ")
+	cnpjCmd.Flags().StringVarP(&cnpjValidate, "validate", "v", "", "Validate a CNPJ value")
+	cnpjCmd.Flags().StringVarP(&cnpjFrom, "from", "f", "", "Validate many CNPJs from file or '-' for stdin")
+	cnpjCmd.Flags().IntVarP(&cnpjCount, "count", "n", 0, "When generating, how many CNPJs to output")
+	cnpjCmd.Flags().BoolVar(&cnpjLegacy, "legacy", false, "When generating, output legacy numeric-only CNPJ (12 digits base + 2 numeric check digits)")
+
+	cpfCmd.Flags().BoolVarP(&cpfGenerate, "generate", "g", false, "Generate a valid CPF")
+	cpfCmd.Flags().StringVarP(&cpfValidate, "validate", "v", "", "Validate a CPF value")
+	cpfCmd.Flags().StringVarP(&cpfFrom, "from", "f", "", "Validate many CPFs from file or '-' for stdin")
+	cpfCmd.Flags().IntVarP(&cpfCount, "count", "n", 0, "When generating, how many CPFs to output")
+
 	rootCmd.CompletionOptions.DisableDefaultCmd = true
+	// Avoid duplicate help/usage or error printing when returning errors from RunE
+	// We handle error printing in main().
+	rootCmd.SilenceUsage = true
+	rootCmd.SilenceErrors = true
 
 	rootCmd.AddCommand(cpfCmd)
 	rootCmd.AddCommand(cnpjCmd)
 }
-
-// -----------------------------
-// CPF command
-// -----------------------------
-var (
-	cpfGenerate bool
-	cpfValidate string
-	cpfFrom     string
-	cpfCount    int
-)
 
 var cpfCmd = &cobra.Command{
 	Use:   "cpf",
@@ -78,20 +100,14 @@ var cpfCmd = &cobra.Command{
 	RunE: func(cmd *cobra.Command, args []string) error {
 		// Validate flags combination
 		if cpfGenerate && (cpfValidate != "" || cpfFrom != "") {
-			_ = cmd.Help()
-
 			return errors.New("--generate cannot be used with --validate or --from")
 		}
 
 		if cpfFrom != "" && cpfValidate != "" {
-			_ = cmd.Help()
-
 			return errors.New("--from and --validate are mutually exclusive for CPF")
 		}
 
 		if !cpfGenerate && cpfValidate == "" && cpfFrom == "" {
-			_ = cmd.Help()
-
 			return errors.New("either --generate, --validate, or --from must be provided")
 		}
 
@@ -128,8 +144,6 @@ var cpfCmd = &cobra.Command{
 
 			scanner := bufio.NewScanner(r)
 			// Increase buf in case of long lines
-			const maxLine = 1024 * 1024
-			buf := make([]byte, 0, 64*1024)
 			scanner.Buffer(buf, maxLine)
 
 			w := bufio.NewWriter(cmd.OutOrStdout())
@@ -187,25 +201,6 @@ var cpfCmd = &cobra.Command{
 	},
 }
 
-// Flags for cpf
-func init() {
-	cpfCmd.Flags().BoolVarP(&cpfGenerate, "generate", "g", false, "Generate a valid CPF")
-	cpfCmd.Flags().StringVarP(&cpfValidate, "validate", "v", "", "Validate a CPF value")
-	cpfCmd.Flags().StringVarP(&cpfFrom, "from", "f", "", "Validate many CPFs from file or '-' for stdin")
-	cpfCmd.Flags().IntVarP(&cpfCount, "count", "n", 0, "When generating, how many CPFs to output")
-}
-
-// -----------------------------
-// CNPJ command
-// -----------------------------
-var (
-	cnpjGenerate bool
-	cnpjValidate string
-	cnpjFrom     string
-	cnpjCount    int
-	cnpjLegacy   bool
-)
-
 var cnpjCmd = &cobra.Command{
 	Use:   "cnpj",
 	Short: "Generate or validate CNPJ",
@@ -220,20 +215,14 @@ var cnpjCmd = &cobra.Command{
 	RunE: func(cmd *cobra.Command, args []string) error {
 		// Validate flags combination
 		if cnpjGenerate && (cnpjValidate != "" || cnpjFrom != "") {
-			_ = cmd.Help()
-
 			return errors.New("--generate cannot be used with --validate or --from")
 		}
 
 		if cnpjFrom != "" && cnpjValidate != "" {
-			_ = cmd.Help()
-
 			return errors.New("--from and --validate are mutually exclusive for CNPJ")
 		}
 
 		if !cnpjGenerate && cnpjValidate == "" && cnpjFrom == "" {
-			_ = cmd.Help()
-
 			return errors.New("either --generate, --validate, or --from must be provided")
 		}
 
@@ -275,8 +264,6 @@ var cnpjCmd = &cobra.Command{
 			}
 
 			scanner := bufio.NewScanner(r)
-			const maxLine = 1024 * 1024
-			buf := make([]byte, 0, 64*1024)
 			scanner.Buffer(buf, maxLine)
 
 			w := bufio.NewWriter(cmd.OutOrStdout())
@@ -333,15 +320,6 @@ var cnpjCmd = &cobra.Command{
 	},
 }
 
-// Flags for cnpj
-func init() {
-	cnpjCmd.Flags().BoolVarP(&cnpjGenerate, "generate", "g", false, "Generate a valid CNPJ")
-	cnpjCmd.Flags().StringVarP(&cnpjValidate, "validate", "v", "", "Validate a CNPJ value")
-	cnpjCmd.Flags().StringVarP(&cnpjFrom, "from", "f", "", "Validate many CNPJs from file or '-' for stdin")
-	cnpjCmd.Flags().IntVarP(&cnpjCount, "count", "n", 0, "When generating, how many CNPJs to output")
-	cnpjCmd.Flags().BoolVar(&cnpjLegacy, "legacy", false, "When generating, output legacy numeric-only CNPJ (12 digits base + 2 numeric check digits)")
-}
-
 // openReader returns an io.Reader for the given path. If a path is "-", it returns stdin.
 // The second return value is a close function for file readers (nil for stdin).
 func openReader(path string) (io.Reader, func(), error) {
@@ -349,7 +327,12 @@ func openReader(path string) (io.Reader, func(), error) {
 		return os.Stdin, nil, nil
 	}
 
-	f, err := os.Open(path)
+	fullPath, err := filepath.Abs(path)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	f, err := os.Open(fullPath)
 	if err != nil {
 		return nil, nil, err
 	}

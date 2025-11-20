@@ -3,7 +3,6 @@ package brdoc
 import (
 	"fmt"
 	"math/rand"
-	"regexp"
 	"slices"
 	"strconv"
 	"strings"
@@ -146,30 +145,85 @@ func (c *CPF) CheckOrigin(value string) string {
 // Private CPF methods
 
 func (c *CPF) maskCPF(value []int) string {
-	var sb strings.Builder
+	// Build formatted CPF directly into a 14-byte buffer: XXX.XXX.XXX-XX
+	var out [14]byte
 
-	for _, item := range value {
-		sb.WriteString(strconv.Itoa(item))
-	}
+	// Map digits into positions
+	out[3], out[7], out[11] = '.', '.', '-'
+	out[0] = byte('0' + value[0])
+	out[1] = byte('0' + value[1])
+	out[2] = byte('0' + value[2])
+	out[4] = byte('0' + value[3])
+	out[5] = byte('0' + value[4])
+	out[6] = byte('0' + value[5])
+	out[8] = byte('0' + value[6])
+	out[9] = byte('0' + value[7])
+	out[10] = byte('0' + value[8])
+	out[12] = byte('0' + value[9])
+	out[13] = byte('0' + value[10])
 
-	cpf := c.digits(sb.String())
-
-	return fmt.Sprintf("%s.%s.%s-%s", cpf[:3], cpf[3:6], cpf[6:9], cpf[9:])
+	return string(out[:])
 }
 
 func (c *CPF) clean(value string) {
 	// Always reset and parse fresh to avoid stale state across calls
 	c.cpfNumber = c.cpfNumber[:0]
-	for _, item := range c.digits(value) {
-		digit, err := strconv.Atoi(string(item))
-		if err == nil {
-			c.cpfNumber = append(c.cpfNumber, digit)
+
+	// Ensure we have the capacity to avoid reallocation across calls
+	if cap(c.cpfNumber) < CpfLength {
+		c.cpfNumber = make([]int, 0, CpfLength)
+	}
+
+	for i := 0; i < len(value); i++ {
+		ch := value[i]
+		if ch >= '0' && ch <= '9' {
+			c.cpfNumber = append(c.cpfNumber, int(ch-'0'))
 		}
 	}
 }
 
+// isDigit checks if a character is a numeric digit
+func (c *CPF) isDigit(ch byte) bool {
+	return ch >= '0' && ch <= '9'
+}
+
+// processRemainingDigits handles the fallback when the buffer exceeds capacity
+func (c *CPF) processRemainingDigits(value string, startIdx int, existingData []byte) string {
+	result := make([]byte, 0, len(value))
+	result = append(result, existingData...)
+
+	for i := startIdx; i < len(value); i++ {
+		if c.isDigit(value[i]) {
+			result = append(result, value[i])
+		}
+	}
+
+	return string(result)
+}
+
 func (c *CPF) digits(value string) string {
-	return regexp.MustCompile(`[^0-9]`).ReplaceAllString(value, "")
+	// Fast filter to keep only digits; avoids regexp allocation per call
+	var (
+		buf [CpfLength]byte
+		n   int
+	)
+
+	for i := 0; i < len(value); i++ {
+		ch := value[i]
+		if !c.isDigit(ch) {
+			continue
+		}
+
+		if n >= len(buf) {
+			// Fallback for unexpected longer inputs with many digits
+			return c.processRemainingDigits(value, i, buf[:n])
+		}
+
+		buf[n] = ch
+		n++
+	}
+
+	return string(buf[:n])
 }
 
 func (c *CPF) calculateFirstDigit(value []int) int {
@@ -204,6 +258,7 @@ func (c *CPF) validate(value []int) bool {
 	if len(value) != CpfLength {
 		return false
 	}
+
 	// Calculate using base slices: first 9 for DV1, first 10 for DV2
 	dv1 := c.calculateFirstDigit(value[:9])
 	dv2 := c.calculateSecondDigit(append(value[:9], dv1))
@@ -255,15 +310,19 @@ func (c *CNPJ) Validate(value string) bool {
 	}
 
 	// Ensure the last 2 characters are numeric
-	dv1, err1 := strconv.Atoi(string(cleaned[12]))
-	if err1 != nil {
+	ch12 := cleaned[12]
+	if ch12 < '0' || ch12 > '9' {
 		return false
 	}
 
-	dv2, err2 := strconv.Atoi(string(cleaned[13]))
-	if err2 != nil {
+	dv1 := int(ch12 - '0')
+
+	ch13 := cleaned[13]
+	if ch13 < '0' || ch13 > '9' {
 		return false
 	}
+
+	dv2 := int(ch13 - '0')
 
 	base := cleaned[:12]
 
@@ -288,34 +347,42 @@ func (c *CNPJ) Format(value string) (string, error) {
 		return "", fmt.Errorf("CNPJ must have 14 characters, got: %d", len(cleaned))
 	}
 
-	return fmt.Sprintf("%s.%s.%s/%s-%s", cleaned[0:2], cleaned[2:5], cleaned[5:8], cleaned[8:12], cleaned[12:14]), nil
+	// Build formatted CNPJ directly into an 18-byte buffer: XX.XXX.XXX/XXXX-XX
+	var out [18]byte
+
+	out[2], out[6], out[10], out[15] = '.', '.', '/', '-'
+
+	// Copy pieces
+	copy(out[0:2], cleaned[0:2])
+	copy(out[3:6], cleaned[2:5])
+	copy(out[7:10], cleaned[5:8])
+	copy(out[11:15], cleaned[8:12])
+	copy(out[16:18], cleaned[12:14])
+
+	return string(out[:]), nil
 }
 
 // Private CNPJ methods
 
 func (c *CNPJ) generateDigits(legacy bool) string {
-	var sb strings.Builder
+	// Build a 12-char base directly into a fixed buffer
+	var base [12]byte
 
-	if legacy { // Generate the first 12 random characters (numbers or letters)
-		for range 12 {
-		RetryLoop:
-			if rng.Intn(2) != 0 {
-				goto RetryLoop
-			}
-
-			sb.WriteByte(byte('0' + rng.Intn(10))) // Number
+	if legacy {
+		for i := range 12 {
+			base[i] = byte('0' + rng.Intn(10))
 		}
 	} else {
-		for range 12 {
+		for i := range 12 {
 			if rng.Intn(2) == 0 {
-				sb.WriteByte(byte('0' + rng.Intn(10))) // Number
+				base[i] = byte('0' + rng.Intn(10))
 			} else {
-				sb.WriteByte(byte('A' + rng.Intn(26))) // Letter
+				base[i] = byte('A' + rng.Intn(26))
 			}
 		}
 	}
 
-	cnpjBase := sb.String()
+	cnpjBase := string(base[:])
 
 	// Calculate the two check digits
 	dv1, err := c.calculateDV(cnpjBase)
@@ -359,11 +426,55 @@ func (c *CNPJ) calculateDV(value string) (int, error) {
 	return 11 - remainder, nil
 }
 
-// clean removes formatting from an alphanumeric CNPJ
+// normalizeChar converts lowercase to uppercase and validates alphanumeric characters
+func (c *CNPJ) normalizeChar(ch byte) (byte, bool) {
+	if ch >= 'a' && ch <= 'z' {
+		return ch - 'a' + 'A', true
+	}
+
+	if (ch >= '0' && ch <= '9') || (ch >= 'A' && ch <= 'Z') {
+		return ch, true
+	}
+
+	return 0, false
+}
+
+// processRemainingChars handles the fallback when buffer exceeds capacity
+func (c *CNPJ) processRemainingChars(value string, startIdx int, existingData []byte) string {
+	result := make([]byte, 0, len(value))
+	result = append(result, existingData...)
+
+	for i := startIdx; i < len(value); i++ {
+		if normalized, ok := c.normalizeChar(value[i]); ok {
+			result = append(result, normalized)
+		}
+	}
+
+	return string(result)
+}
+
 func (c *CNPJ) digits(value string) string {
-	// Keep only digits and uppercase letters (A-Z); strip formatting like .-/ and spaces
-	s := strings.ToUpper(value)
-	return regexp.MustCompile(`[^0-9A-Z]`).ReplaceAllString(s, "")
+	// Fast path: uppercase letters and keep only 0-9 and A-Z
+	var buf [CnpjLength]byte
+
+	n := 0
+
+	for i := 0; i < len(value); i++ {
+		normalized, ok := c.normalizeChar(value[i])
+		if !ok {
+			continue
+		}
+
+		if n >= len(buf) {
+			// Switch to fallback allocation for longer inputs
+			return c.processRemainingChars(value, i, buf[:n])
+		}
+
+		buf[n] = normalized
+		n++
+	}
+
+	return string(buf[:n])
 }
 
 // ============================================================================

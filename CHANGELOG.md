@@ -1,28 +1,3 @@
-# Changelog
-
-All notable changes to this project will be documented in this file.
-
-The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
-and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
-
-## [Unreleased]
-
-### Added
-
-- CNPJ legacy numeric-only generation in the library via `CNPJ.GenerateLegacy()`
-- CLI flag `--legacy` for `brdoc cnpj --generate` to output legacy numeric-only CNPJs
-
-### Changed
-
-  - Documentation updates across the project:
-    - README: corrected API signatures, clarified that `CPF.Generate()` returns an unformatted 11-digit string, updated Go version requirement (1.24), added CLI bulk operations (`--from`, `--count`) and stdin examples, updated project structure (files renamed to `brdoc.go`, `brdoc_test.go`, `cmd/brdoc/main.go`), and roadmap status for CLI and legacy CNPJ.
-    - SETUP: aligned project structure and added CLI quick start with bulk validation examples.
-    - Package docs (`doc.go`): corrected CNPJ `Generate()` example to reflect current signature.
-    - Clarified expected validation output format in CLI docs (`valid\t<FORMATTED_VALUE>` / `invalid\t<ORIGINAL_INPUT>`).
-    - Testing docs (README, SETUP, CONTRIBUTING): documented usage of `testify` (`assert`/`require`) with examples.
-    - Documented legacy numeric-only CNPJ generation (`GenerateLegacy`) and new CLI `--legacy` flag.
-
-### Tests
 
 - Migrated unit tests to use `github.com/stretchr/testify` assertion library (`assert`/`require`) for clearer and more concise assertions.
 
@@ -88,3 +63,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 [0.1.0]: https://github.com/inovacc/brdoc/releases/tag/v0.1.0
 
 [0.0.1]: https://github.com/inovacc/brdoc/releases/tag/v0.0.1
+
+### Fixed
+
+- CLI: resolved an issue where the command help/usage text could be printed twice on incorrect flag usage. We removed redundant `cmd.Help()` calls in subcommands and enabled `SilenceUsage` and `SilenceErrors` on the root command to ensure help/error output appears only once.

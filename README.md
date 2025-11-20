@@ -331,15 +331,15 @@ This project uses the `testify` assertion library for clearer tests. Example:
 
 ```go
 import (
-  "testing"
-  "github.com/stretchr/testify/assert"
-  "github.com/stretchr/testify/require"
+"testing"
+"github.com/stretchr/testify/assert"
+"github.com/stretchr/testify/require"
 )
 
 func TestExample(t *testing.T) {
-  result, err := doSomething()
-  require.NoError(t, err)
-  assert.Equal(t, "expected", result)
+result, err := doSomething()
+require.NoError(t, err)
+assert.Equal(t, "expected", result)
 }
 ```
 
