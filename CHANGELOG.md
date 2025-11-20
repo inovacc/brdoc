@@ -14,13 +14,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
-  - Documentation updates across the project:
-    - README: corrected API signatures, clarified that `CPF.Generate()` returns an unformatted 11-digit string, updated Go version requirement (1.24), added CLI bulk operations (`--from`, `--count`) and stdin examples, updated project structure (files renamed to `brdoc.go`, `brdoc_test.go`, `cmd/brdoc/main.go`), and roadmap status for CLI and legacy CNPJ.
-    - SETUP: aligned project structure and added CLI quick start with bulk validation examples.
-    - Package docs (`doc.go`): corrected CNPJ `Generate()` example to reflect current signature.
-    - Clarified expected validation output format in CLI docs (`valid\t<FORMATTED_VALUE>` / `invalid\t<ORIGINAL_INPUT>`).
-    - Testing docs (README, SETUP, CONTRIBUTING): documented usage of `testify` (`assert`/`require`) with examples.
-    - Documented legacy numeric-only CNPJ generation (`GenerateLegacy`) and new CLI `--legacy` flag.
+- Documentation updates across the project:
+  - README: corrected API signatures, clarified that `CPF.Generate()` returns an unformatted 11-digit string, updated Go version requirement (1.24), added CLI bulk operations (`--from`, `--count`) and
+    stdin examples, updated project structure (files renamed to `brdoc.go`, `brdoc_test.go`, `cmd/brdoc/main.go`), and roadmap status for CLI and legacy CNPJ.
+  - SETUP: aligned project structure and added CLI quick start with bulk validation examples.
+  - Package docs (`doc.go`): corrected CNPJ `Generate()` example to reflect current signature.
+  - Clarified expected validation output format in CLI docs (`valid\t<FORMATTED_VALUE>` / `invalid\t<ORIGINAL_INPUT>`).
+  - Testing docs (README, SETUP, CONTRIBUTING): documented usage of `testify` (`assert`/`require`) with examples.
+  - Documented legacy numeric-only CNPJ generation (`GenerateLegacy`) and new CLI `--legacy` flag.
 
 ### Tests
 

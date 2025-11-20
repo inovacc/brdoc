@@ -394,6 +394,10 @@ func TestValidateDocument(t *testing.T) {
 
 func BenchmarkCPF_Generate(b *testing.B) {
 	cpf := NewCPF()
+
+	b.ReportAllocs()
+	b.ResetTimer()
+
 	for b.Loop() {
 		_ = cpf.Generate()
 	}
@@ -403,13 +407,21 @@ func BenchmarkCPF_Validate(b *testing.B) {
 	cpf := NewCPF()
 
 	testCPF := "123.456.789-09"
+
+	b.ReportAllocs()
+	b.ResetTimer()
+
 	for b.Loop() {
-		cpf.Validate(testCPF)
+		_ = cpf.Validate(testCPF)
 	}
 }
 
 func BenchmarkCNPJ_Generate(b *testing.B) {
 	cnpj := NewCNPJ()
+
+	b.ReportAllocs()
+	b.ResetTimer()
+
 	for b.Loop() {
 		_ = cnpj.Generate()
 	}
@@ -419,7 +431,11 @@ func BenchmarkCNPJ_Validate(b *testing.B) {
 	cnpj := NewCNPJ()
 
 	testCNPJ := "12.ABC.345/01DE-35"
+
+	b.ReportAllocs()
+	b.ResetTimer()
+
 	for b.Loop() {
-		cnpj.Validate(testCNPJ)
+		_ = cnpj.Validate(testCNPJ)
 	}
 }
