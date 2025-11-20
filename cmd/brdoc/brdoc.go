@@ -23,9 +23,12 @@ THE SOFTWARE.
 package main
 
 import (
+	"bufio"
 	"errors"
 	"fmt"
+	"io"
 	"os"
+	"strings"
 
 	sdk "github.com/inovacc/brdoc"
 	"github.com/spf13/cobra"
@@ -56,33 +59,116 @@ func init() {
 var (
 	cpfGenerate bool
 	cpfValidate string
+	cpfFrom     string
+	cpfCount    int
 )
 
 var cpfCmd = &cobra.Command{
-	Use:     "cpf",
-	Short:   "Generate or validate CPF",
-	Example: "brdoc cpf --generate\nbrdoc cpf --validate 123.456.789-09",
+	Use:   "cpf",
+	Short: "Generate or validate CPF",
+	Example: strings.Join([]string{
+		"brdoc cpf --generate",
+		"brdoc cpf --generate --count 10",
+		"brdoc cpf --validate 123.456.789-09",
+		"brdoc cpf --validate --from cpfs.txt",
+		"type cpfs.txt | brdoc cpf --validate --from -",
+	}, "\n"),
 	RunE: func(cmd *cobra.Command, args []string) error {
-		if (cpfGenerate && cpfValidate != "") || (!cpfGenerate && cpfValidate == "") {
-			// If both provided or none provided, show help with the error
+		// Validate flags combination
+		if cpfGenerate && (cpfValidate != "" || cpfFrom != "") {
 			_ = cmd.Help()
-			if cpfGenerate && cpfValidate != "" {
-				return errors.New("flags --generate and --validate are mutually exclusive")
-			}
 
-			return errors.New("either --generate or --validate must be provided")
+			return errors.New("--generate cannot be used with --validate or --from")
+		}
+
+		if cpfFrom != "" && cpfValidate != "" {
+			_ = cmd.Help()
+
+			return errors.New("--from and --validate are mutually exclusive for CPF")
+		}
+
+		if !cpfGenerate && cpfValidate == "" && cpfFrom == "" {
+			_ = cmd.Help()
+
+			return errors.New("either --generate, --validate, or --from must be provided")
 		}
 
 		c := sdk.NewCPF()
 		if cpfGenerate {
-			_, _ = fmt.Fprintln(cmd.OutOrStdout(), c.Generate())
+			if cpfCount <= 0 {
+				cpfCount = 1
+			}
+
+			w := bufio.NewWriter(cmd.OutOrStdout())
+			defer func(w *bufio.Writer) {
+				if err := w.Flush(); err != nil {
+					panic(err)
+				}
+			}(w)
+
+			for i := 0; i < cpfCount; i++ {
+				_, _ = fmt.Fprintln(w, c.Generate())
+			}
+
 			return nil
 		}
 
-		// validate path
+		// validate single or bulk
+		if cpfFrom != "" { // bulk from file or stdin
+			r, closeFn, err := openReader(cpfFrom)
+			if err != nil {
+				return err
+			}
+
+			if closeFn != nil {
+				defer closeFn()
+			}
+
+			scanner := bufio.NewScanner(r)
+			// Increase buf in case of long lines
+			const maxLine = 1024 * 1024
+			buf := make([]byte, 0, 64*1024)
+			scanner.Buffer(buf, maxLine)
+
+			w := bufio.NewWriter(cmd.OutOrStdout())
+			defer func(w *bufio.Writer) {
+				if err := w.Flush(); err != nil {
+					panic(err)
+				}
+			}(w)
+
+			anyInvalid := false
+			for scanner.Scan() {
+				line := strings.TrimSpace(scanner.Text())
+				if line == "" || strings.HasPrefix(line, "#") {
+					continue
+				}
+				if c.Validate(line) {
+					if formatted, err := c.Format(line); err == nil {
+						_, _ = fmt.Fprintf(w, "valid\t%s\n", formatted)
+					} else {
+						_, _ = fmt.Fprintln(w, "valid")
+					}
+				} else {
+					anyInvalid = true
+					_, _ = fmt.Fprintf(w, "invalid\t%s\n", line)
+				}
+			}
+
+			if err := scanner.Err(); err != nil {
+				return err
+			}
+
+			if anyInvalid {
+				cmd.SilenceUsage = true
+			}
+
+			return nil
+		}
+
+		// single validate value
 		valid := c.Validate(cpfValidate)
 		if valid {
-			// also print formatted variant
 			if formatted, err := c.Format(cpfValidate); err == nil {
 				_, _ = fmt.Fprintf(cmd.OutOrStdout(), "valid\t%s\n", formatted)
 			} else {
@@ -103,6 +189,8 @@ var cpfCmd = &cobra.Command{
 func init() {
 	cpfCmd.Flags().BoolVarP(&cpfGenerate, "generate", "g", false, "Generate a valid CPF")
 	cpfCmd.Flags().StringVarP(&cpfValidate, "validate", "v", "", "Validate a CPF value")
+	cpfCmd.Flags().StringVarP(&cpfFrom, "from", "f", "", "Validate many CPFs from file or '-' for stdin")
+	cpfCmd.Flags().IntVarP(&cpfCount, "count", "n", 0, "When generating, how many CPFs to output")
 }
 
 // -----------------------------
@@ -111,30 +199,115 @@ func init() {
 var (
 	cnpjGenerate bool
 	cnpjValidate string
+	cnpjFrom     string
+	cnpjCount    int
 )
 
 var cnpjCmd = &cobra.Command{
-	Use:     "cnpj",
-	Short:   "Generate or validate CNPJ",
-	Example: "brdoc cnpj --generate\nbrdoc cnpj --validate 12.345.678/0001-95",
+	Use:   "cnpj",
+	Short: "Generate or validate CNPJ",
+	Example: strings.Join([]string{
+		"brdoc cnpj --generate",
+		"brdoc cnpj --generate --count 10",
+		"brdoc cnpj --validate 12.345.678/0001-95",
+		"brdoc cnpj --validate --from cnpjs.txt",
+		"type cnpjs.txt | brdoc cnpj --validate --from -",
+	}, "\n"),
 	RunE: func(cmd *cobra.Command, args []string) error {
-		if (cnpjGenerate && cnpjValidate != "") || (!cnpjGenerate && cnpjValidate == "") {
+		// Validate flags combination
+		if cnpjGenerate && (cnpjValidate != "" || cnpjFrom != "") {
 			_ = cmd.Help()
-			if cnpjGenerate && cnpjValidate != "" {
-				return errors.New("flags --generate and --validate are mutually exclusive")
-			}
 
-			return errors.New("either --generate or --validate must be provided")
+			return errors.New("--generate cannot be used with --validate or --from")
+		}
+
+		if cnpjFrom != "" && cnpjValidate != "" {
+			_ = cmd.Help()
+
+			return errors.New("--from and --validate are mutually exclusive for CNPJ")
+		}
+
+		if !cnpjGenerate && cnpjValidate == "" && cnpjFrom == "" {
+			_ = cmd.Help()
+
+			return errors.New("either --generate, --validate, or --from must be provided")
 		}
 
 		c := sdk.NewCNPJ()
 		if cnpjGenerate {
-			_, _ = fmt.Fprintln(cmd.OutOrStdout(), c.Generate())
+			if cnpjCount <= 0 {
+				cnpjCount = 1
+			}
+
+			w := bufio.NewWriter(cmd.OutOrStdout())
+			defer func(w *bufio.Writer) {
+				if err := w.Flush(); err != nil {
+					panic(err)
+				}
+			}(w)
+
+			for i := 0; i < cnpjCount; i++ {
+				_, _ = fmt.Fprintln(w, c.Generate())
+			}
+
 			return nil
 		}
 
-		valid := c.Validate(cnpjValidate)
-		if valid {
+		// validate single or bulk
+		if cnpjFrom != "" { // bulk from file or stdin
+			r, closeFn, err := openReader(cnpjFrom)
+			if err != nil {
+				return err
+			}
+
+			if closeFn != nil {
+				defer closeFn()
+			}
+
+			scanner := bufio.NewScanner(r)
+			const maxLine = 1024 * 1024
+			buf := make([]byte, 0, 64*1024)
+			scanner.Buffer(buf, maxLine)
+
+			w := bufio.NewWriter(cmd.OutOrStdout())
+			defer func(w *bufio.Writer) {
+				if err := w.Flush(); err != nil {
+					panic(err)
+				}
+			}(w)
+
+			anyInvalid := false
+			for scanner.Scan() {
+				line := strings.TrimSpace(scanner.Text())
+				if line == "" || strings.HasPrefix(line, "#") {
+					continue
+				}
+
+				if c.Validate(line) {
+					if formatted, err := c.Format(line); err == nil {
+						_, _ = fmt.Fprintf(w, "valid\t%s\n", formatted)
+					} else {
+						_, _ = fmt.Fprintln(w, "valid")
+					}
+				} else {
+					anyInvalid = true
+					_, _ = fmt.Fprintf(w, "invalid\t%s\n", line)
+				}
+			}
+
+			if err := scanner.Err(); err != nil {
+				return err
+			}
+
+			if anyInvalid {
+				cmd.SilenceUsage = true
+			}
+
+			return nil
+		}
+
+		// single validate value
+		if c.Validate(cnpjValidate) {
 			if formatted, err := c.Format(cnpjValidate); err == nil {
 				_, _ = fmt.Fprintf(cmd.OutOrStdout(), "valid\t%s\n", formatted)
 			} else {
@@ -143,7 +316,6 @@ var cnpjCmd = &cobra.Command{
 
 			return nil
 		}
-
 		_, _ = fmt.Fprintln(cmd.OutOrStdout(), "invalid")
 		cmd.SilenceUsage = true
 
@@ -155,4 +327,23 @@ var cnpjCmd = &cobra.Command{
 func init() {
 	cnpjCmd.Flags().BoolVarP(&cnpjGenerate, "generate", "g", false, "Generate a valid CNPJ")
 	cnpjCmd.Flags().StringVarP(&cnpjValidate, "validate", "v", "", "Validate a CNPJ value")
+	cnpjCmd.Flags().StringVarP(&cnpjFrom, "from", "f", "", "Validate many CNPJs from file or '-' for stdin")
+	cnpjCmd.Flags().IntVarP(&cnpjCount, "count", "n", 0, "When generating, how many CNPJs to output")
+}
+
+// openReader returns an io.Reader for the given path. If a path is "-", it returns stdin.
+// The second return value is a close function for file readers (nil for stdin).
+func openReader(path string) (io.Reader, func(), error) {
+	if path == "-" {
+		return os.Stdin, nil, nil
+	}
+
+	f, err := os.Open(path)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	closeFn := func() { _ = f.Close() }
+
+	return f, closeFn, nil
 }

@@ -132,6 +132,7 @@ func TestCPF_Format_ProvidedValid_Unformatted(t *testing.T) {
 				out = append(out, r)
 			}
 		}
+
 		return string(out)
 	}
 
@@ -235,6 +236,7 @@ func TestCNPJ_Format_ProvidedValid_Unformatted(t *testing.T) {
 				out = append(out, r)
 			}
 		}
+
 		return string(out)
 	}
 
